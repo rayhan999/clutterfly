@@ -174,6 +174,8 @@ func selfTest() {
     precondition(slim.sections.first?.items.map(\.name) == ["Google Chrome", "ZoomLauncher"], "\(slim.sections)")
     precondition(slim.sections[0].items[0].detail == "870.8MB" && slim.headline == "1.40GB" && slim.subline == "9 apps")
     precondition(parseSize("2.734GB") == 2.734e9 && parseSize("938kB") == 938_000 && parseSize("1.40GB+") == 1.4e9 && parseSize("0B") == 0)
+    precondition(localSizes("x 0B") == "x 0B" && localSizes("1.40GB+") == bytes(1.4e9) + "+"
+                 && localSizes("9 items, 2.74GB") == "9 items, " + bytes(2.74e9) && localSizes("Siri cache") == "Siri cache")
     // Live check: the native screens can decode what the installed mo prints.
     let done = DispatchSemaphore(value: 0)
     Task.detached {
@@ -590,7 +592,7 @@ struct ToolView: View {
                     .frame(maxWidth: .infinity)
                 } else if mine, !r.report.headline.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.report.headline).font(.system(size: 52, weight: .heavy, design: .rounded))
+                        Text(localSizes(r.report.headline)).font(.system(size: 52, weight: .heavy, design: .rounded))
                             .foregroundStyle(LinearGradient(colors: tool.colors, startPoint: .leading, endPoint: .trailing))
                         Text(r.didRealRun ? "cleaned up" : "can be freed" + (r.report.subline.isEmpty ? "" : " · \(r.report.subline)"))
                             .font(.title3).foregroundStyle(.secondary)
@@ -672,8 +674,8 @@ struct SectionCard: View {
                     Image(systemName: symbol(i.kind)).font(.callout).foregroundStyle(color(i.kind))
                         .accessibilityLabel(word(i.kind))
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(i.name).font(.body)
-                        if !i.detail.isEmpty { Text(i.detail).font(.callout).foregroundStyle(.secondary).lineLimit(2) }
+                        Text(localSizes(i.name)).font(.body)
+                        if !i.detail.isEmpty { Text(localSizes(i.detail)).font(.callout).foregroundStyle(.secondary).lineLimit(2) }
                     }
                     Spacer(minLength: 0)
                     if i.kind == .review { pill("Review", .yellow) }

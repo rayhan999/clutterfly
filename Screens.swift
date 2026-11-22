@@ -14,7 +14,7 @@ struct Card<Content: View>: View {
             Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
             content
         }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)  // equal heights in a row
         .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(color.opacity(0.35)))
     }

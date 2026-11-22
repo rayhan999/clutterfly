@@ -738,11 +738,18 @@ struct BatteryView: View {
             }
             Text(charging ? "Charging ⚡️" : plugged ? "Plugged in, not charging" : "On battery" + (m.timeLeft.isEmpty ? "" : " · \(m.timeLeft) left"))
                 .font(.title2.bold())
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .top)], spacing: 12) {
                 Card(title: "Cycles", icon: "arrow.triangle.2.circlepath", color: .green) { Text("\(Int(m.num("CycleCount")))").font(.title.bold()); Text("Apple rates these for 1000").font(.callout).foregroundStyle(.secondary) }
                 Card(title: "Capacity", icon: "battery.75percent", color: .mint) { Text("\(Int(m.num("AppleRawMaxCapacity"))) mAh").font(.title.bold()); Text("of \(Int(m.num("DesignCapacity"))) mAh when new").font(.callout).foregroundStyle(.secondary) }
-                Card(title: "Temperature", icon: "thermometer.medium", color: .orange) { Text(String(format: "%.1f °C", m.num("Temperature") / 100)).font(.title.bold()) }
-                Card(title: "Charger", icon: "powerplug.fill", color: .yellow) { Text(plugged ? (m.watts.map { "\($0) W" } ?? "Connected") : "Not connected").font(.title.bold()) }
+                Card(title: "Temperature", icon: "thermometer.medium", color: .orange) {
+                    let t = m.num("Temperature") / 100
+                    Text(String(format: "%.1f °C", t)).font(.title.bold())
+                    Text(t < 35 ? "Normal" : t < 40 ? "Warm" : "Hot").font(.callout).foregroundStyle(.secondary)
+                }
+                Card(title: "Charger", icon: "powerplug.fill", color: .yellow) {
+                    Text(plugged ? (m.watts.map { "\($0) W" } ?? "Connected") : "Not connected").font(.title.bold())
+                    Text(charging ? "Charging" : plugged ? "Not charging" : "Running on battery").font(.callout).foregroundStyle(.secondary)
+                }
                 Card(title: "Low Power Mode", icon: "leaf.fill", color: .green) {
                     Text(m.lowPower ? "On" : "Off").font(.title.bold())
                     Button("Battery Settings") { openSettings("x-apple.systempreferences:com.apple.Battery-Settings.extension") }

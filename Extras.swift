@@ -41,6 +41,14 @@ func parseSize(_ s: String) -> Double {
     return num * (mult[unit] ?? 1)
 }
 
+/// Rewrites mo's sizes ("11.51GB", "938kB") in the Mac's own format, like the rest of the app.
+func localSizes(_ s: String) -> String {
+    s.replacing(try! Regex(#"[0-9][0-9.]*\s*[kKMGT]?i?B\b"#)) { m in
+        let n = parseSize(String(s[m.range]))
+        return n > 0 ? bytes(n) : String(s[m.range])
+    }
+}
+
 struct ScreenHeader: View {
     let title: String, subtitle: String, icon: String, colors: [Color]
     var body: some View {
