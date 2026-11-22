@@ -12,6 +12,7 @@ Molehill puts a friendly face on the excellent [Mole](https://github.com/tw93/Mo
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-7b5cfa)
 ![Apple Silicon + Intel](https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-5b8cff)
 ![Swift](https://img.shields.io/badge/SwiftUI-native-f05138)
+[![MIT License](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/rayhan999/mole-hill?style=social)](https://github.com/rayhan999/mole-hill/stargazers)
 
 [**⬇️ Download**](https://github.com/rayhan999/mole-hill/releases/latest) · [Features](#-features) · [Prerequisites](#-prerequisites) · [Install](#-install) · [Safety](#%EF%B8%8F-safe-by-design) · [Build](#-build-from-source) · [FAQ](#-faq)
@@ -166,6 +167,12 @@ No. It has no analytics, no account and no network calls of its own. The only ne
 ## 🙏 Credits
 
 Cleaning, optimizing and uninstalling are powered by [**Mole**](https://github.com/tw93/Mole) by [@tw93](https://github.com/tw93). Go give it a star too. Molehill is an independent project and isn't affiliated with Mole.
+
+Molehill doesn't include any of Mole's code. It runs the `mo` command you install separately, the same way you would in Terminal. Mole is licensed under [GPL-3.0](https://github.com/tw93/Mole/blob/main/LICENSE).
+
+## 📄 License
+
+Molehill is released under the [MIT License](LICENSE).
 
 ---
 
