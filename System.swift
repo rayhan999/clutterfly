@@ -637,7 +637,7 @@ struct SpeedTestView: View {
         let route = await sh("route -n get default").out
         let iface = capture(#"interface: (\S+)"#, route)?[0] ?? ""
         let gateway = capture(#"gateway: (\S+)"#, route)?[0] ?? "—"
-        let ip = await sh("ipconfig getifaddr \(iface)").out.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ip = await sh("ipconfig getifaddr \(q(iface))").out.trimmingCharacters(in: .whitespacesAndNewlines)
         let hw = await sh("networksetup -listallhardwareports").out
         let portName = capture(#"Hardware Port: ([^\n]+)\nDevice: \#(iface)\n"#, hw)?[0]
         let dns = await sh("scutil --dns").out.split(separator: "\n")

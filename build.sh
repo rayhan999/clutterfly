@@ -4,7 +4,7 @@
 set -e
 cd "${0:A:h}"
 APP="Clutterfly.app"
-VERSION="1.1.1"
+VERSION="1.1.2"
 SRC=(Clutterfly.swift Screens.swift Extras.swift System.swift)
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp AppIcon.icns "$APP/Contents/Resources/"  # regenerate: see make_icon.swift
@@ -30,7 +30,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
-codesign -s - --force "$APP" >/dev/null 2>&1 || true
+# Hardened runtime: blocks DYLD_INSERT_LIBRARIES-style code injection, so nothing can borrow the app's Full Disk Access.
+codesign -s - --force --options runtime "$APP"
 echo "Built $APP"
 if [[ "$1" == release ]]; then rm -f Clutterfly.zip; ditto -c -k --keepParent "$APP" Clutterfly.zip; echo "Zipped Clutterfly.zip"; fi
 
