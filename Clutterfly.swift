@@ -5,11 +5,11 @@ import AppKit
 // Note: built with Command Line Tools only, whose SDK lacks SwiftUI macro plugins,
 // so there is no @State / #Preview here — all UI state lives in the Runner object.
 
-@main struct MolehillApp: App {
+@main struct ClutterflyApp: App {
     init() { if CommandLine.arguments.contains("--selftest") { selfTest(); exit(0) } }
     var body: some Scene {
         // Single window (not WindowGroup) so the menu bar can bring the same one back.
-        Window("Molehill", id: "main") { ContentView().frame(minWidth: 960, minHeight: 660) }
+        Window("Clutterfly", id: "main") { ContentView().frame(minWidth: 960, minHeight: 660) }
             .windowStyle(.hiddenTitleBar)
         MenuBarExtra { MenuBarContent() } label: { MenuBarLabel() }
     }
@@ -237,7 +237,7 @@ final class Runner: ObservableObject {
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" &&
             export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" &&
             brew install mole &&
-            echo "\\nDone! Switch back to Molehill."
+            echo "\\nDone! Switch back to Clutterfly."
             """)
     }
 
@@ -406,7 +406,7 @@ struct AccessBanner: View {
             Image(systemName: "lock.shield.fill").font(.title2).foregroundStyle(.yellow)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Stop the permission pop-ups").font(.headline)
-                Text("Give Molehill Full Disk Access once. In Settings, turn on Molehill, or drag it in from the Finder window that opens.")
+                Text("Give Clutterfly Full Disk Access once. In Settings, turn on Clutterfly, or drag it in from the Finder window that opens.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -427,7 +427,7 @@ struct SetupView: View {
             Orb(colors: colors, busy: r.running, icon: "arrow.down.circle.fill")
             Text(r.running ? "Installing Mole…" : "Welcome!").font(.largeTitle.bold())
             Text(r.running ? "This can take a minute." :
-                 "Molehill needs the free Mole tool to scan and clean your Mac.\nIt isn't installed yet. One click sets it up.")
+                 "Clutterfly needs the free Mole tool to scan and clean your Mac.\nIt isn't installed yet. One click sets it up.")
                 .foregroundStyle(.secondary).multilineTextAlignment(.center)
             if r.running {
                 BigButton(title: "Stop", icon: "stop.fill", colors: [.gray, .secondary]) { r.stop() }

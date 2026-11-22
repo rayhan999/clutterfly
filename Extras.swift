@@ -378,7 +378,7 @@ struct SnapshotsView: View {
     private func notify() {
         let c = UNMutableNotificationContent()
         c.title = "Your Mac is running low on space"
-        c.body = "Only \(bytes(free)) left. Open Molehill to clean up."
+        c.body = "Only \(bytes(free)) left. Open Clutterfly to clean up."
         c.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "lowdisk", content: c, trigger: nil))
     }
@@ -406,9 +406,9 @@ struct MenuBarContent: View {
         Toggle("Keep Mac Awake", isOn: Binding(get: { caffeine.active }, set: { $0 ? caffeine.start() : caffeine.stop() }))
         Button("Scan for Junk…") { show("clean"); Runner.shared.run(["clean", "--dry-run"]) }
         Button("Live Status…") { show("status") }
-        Button("Open Molehill") { show(nil) }
+        Button("Open Clutterfly") { show(nil) }
         Divider()
-        Button("Quit Molehill") { NSApp.terminate(nil) }
+        Button("Quit Clutterfly") { NSApp.terminate(nil) }
     }
 
     func show(_ id: String?) {
@@ -471,7 +471,7 @@ struct HistoryView: View {
                     Picker("Warn me when free space drops below", selection: Binding(get: { disk.thresholdGB }, set: { disk.thresholdGB = $0 })) {
                         Text("Off").tag(0); Text("10 GB").tag(10); Text("20 GB").tag(20); Text("30 GB").tag(30); Text("50 GB").tag(50)
                     }
-                    Text("Checked every minute while Molehill runs. It also sits in your menu bar.").font(.caption).foregroundStyle(.secondary)
+                    Text("Checked every minute while Clutterfly runs. It also sits in your menu bar.").font(.caption).foregroundStyle(.secondary)
                 }
                 if !m.sessions.isEmpty {
                     Card(title: "Recent activity", icon: "list.bullet", color: .teal) {
@@ -530,7 +530,7 @@ struct HistoryView: View {
 
     func save() {
         try? FileManager.default.createDirectory(atPath: (Self.file as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
-        let header = "# Mole Whitelist - Protected paths won't be deleted\n# Edited by Molehill. One pattern per line.\n"
+        let header = "# Mole Whitelist - Protected paths won't be deleted\n# Edited by Clutterfly. One pattern per line.\n"
         try? (header + patterns.joined(separator: "\n") + "\n").write(toFile: Self.file, atomically: true, encoding: .utf8)
         load()
     }
@@ -730,7 +730,7 @@ struct UpdateView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                ScreenHeader(title: "Update Mole", subtitle: "Molehill uses whatever Mole version is installed.", icon: "arrow.triangle.2.circlepath", colors: colors)
+                ScreenHeader(title: "Update Mole", subtitle: "Clutterfly uses whatever Mole version is installed.", icon: "arrow.triangle.2.circlepath", colors: colors)
                 Orb(colors: colors, busy: m.busy, icon: "arrow.down.circle.fill")
                 Text(m.version).font(.title2.bold())
                 BigButton(title: m.busy ? "Updating…" : "Update Now", icon: "arrow.down.circle.fill", colors: colors) {

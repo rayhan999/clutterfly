@@ -430,7 +430,7 @@ struct UninstallView: View {
 
     func start() {
         stop()
-        // -i: no idle sleep, -d: screen stays on, -w: ends automatically when Molehill quits.
+        // -i: no idle sleep, -d: screen stays on, -w: ends automatically when Clutterfly quits.
         var args = ["-i", "-w", "\(ProcessInfo.processInfo.processIdentifier)"]
         if keepDisplayOn { args.append("-d") }
         if minutes > 0 { args += ["-t", "\(minutes * 60)"] }
@@ -462,7 +462,7 @@ struct CaffeinateView: View {
             if let end = c.endsAt {
                 (Text("Your Mac can sleep again in ") + Text(end, style: .timer)).font(.title3).monospacedDigit()
             } else if c.active {
-                Text("Until you stop it or quit Molehill.").foregroundStyle(.secondary)
+                Text("Until you stop it or quit Clutterfly.").foregroundStyle(.secondary)
             } else {
                 Text("Stop your Mac from falling asleep during downloads, builds or presentations.")
                     .foregroundStyle(.secondary).multilineTextAlignment(.center)
