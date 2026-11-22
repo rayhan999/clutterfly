@@ -17,6 +17,10 @@ Clutterfly puts a friendly face on the excellent [Mole](https://github.com/tw93/
 
 [**⬇️ Download**](https://github.com/rayhan999/clutterfly/releases/latest) · [Features](#-features) · [Prerequisites](#-prerequisites) · [Install](#-install) · [Safety](#%EF%B8%8F-safe-by-design) · [Build](#-build-from-source) · [FAQ](#-faq)
 
+<br>
+
+<img src="screenshots/home.jpg" alt="Clutterfly Home: free disk space, what you can safely free, and quick tools">
+
 </div>
 
 ---
@@ -33,6 +37,14 @@ Clutterfly gives you both:
 - 🪶 **Tiny and native.** About 2 MB, pure SwiftUI, no Electron, no tracking, no account.
 - 🔓 **Free and open source.** Read every line it runs.
 
+## 📸 Screenshots
+
+| Smart Clean | Live Status |
+|---|---|
+| <img src="screenshots/clean.jpg" alt="Smart Clean preview grouped by category"> | <img src="screenshots/status.jpg" alt="Live Status with health score, CPU, memory, disk and battery"> |
+| **Running Apps** | **Battery** |
+| <img src="screenshots/processes.jpg" alt="Running Apps sorted by CPU with Quit buttons"> | <img src="screenshots/battery.jpg" alt="Battery charge, health, cycles and capacity"> |
+
 ## 🚀 Features
 
 Everything sits in a sidebar, grouped by what you want to do.
@@ -40,7 +52,7 @@ Everything sits in a sidebar, grouped by what you want to do.
 ### 🧹 Clean
 | | |
 |---|---|
-| **Deep Clean** | System and app caches, logs, browser junk and more, with a dry-run preview before anything is removed. |
+| **Smart Clean** | System and app caches, logs, browser junk and more, with a dry-run preview before anything is removed. |
 | **Developer Caches** | npm, pnpm, Yarn, Bun, Homebrew, pip, Xcode DerivedData, Simulators, Gradle, Cargo, Go, CocoaPods. Sizes shown, cleaned with each tool's own command. |
 | **Docker** | See what images, containers, volumes and build cache take, then prune with one click. |
 | **Project Junk** | Finds `node_modules`, build folders and other leftovers in old projects. |
