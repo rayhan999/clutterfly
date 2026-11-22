@@ -33,3 +33,11 @@ PLIST
 codesign -s - --force "$APP" >/dev/null 2>&1 || true
 echo "Built $APP"
 if [[ "$1" == release ]]; then rm -f Molehill.zip; ditto -c -k --keepParent "$APP" Molehill.zip; echo "Zipped Molehill.zip"; fi
+
+# Install into /Applications, restarting the app if it was open.
+running=$(pgrep -x Molehill || true)
+[[ -n "$running" ]] && { pkill -x Molehill; while pgrep -x Molehill >/dev/null; do sleep 0.2; done; }
+rm -rf "/Applications/$APP" && ditto "$APP" "/Applications/$APP"
+echo "Installed /Applications/$APP"
+[[ -n "$running" ]] && open "/Applications/$APP"
+true
