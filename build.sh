@@ -4,7 +4,7 @@
 set -e
 cd "${0:A:h}"
 APP="Clutterfly.app"
-VERSION="1.1"
+VERSION="1.1.1"
 SRC=(Clutterfly.swift Screens.swift Extras.swift System.swift)
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp AppIcon.icns "$APP/Contents/Resources/"  # regenerate: see make_icon.swift
