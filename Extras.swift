@@ -68,7 +68,7 @@ struct BigNumber: View {
 }
 
 func outputBox(_ text: String) -> some View {
-    Text(text).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+    Text(text).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading).padding(12)
         .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
 }
@@ -111,7 +111,7 @@ struct DockerView: View {
                 ScreenHeader(title: "Docker", subtitle: "Unused images, containers, volumes and build cache.", icon: "shippingbox.circle.fill", colors: colors)
                 switch m.state {
                 case "loading": Loading("Asking Docker…", colors)
-                case "missing": Text("Docker isn't installed on this Mac.").foregroundStyle(.secondary).padding(.top, 40)
+                case "missing": ContentUnavailableView("Docker isn't installed", systemImage: "shippingbox", description: Text("Nothing to clean here.")).padding(.top, 40)
                 case "stopped":
                     VStack(spacing: 14) {
                         Text("Docker isn't running.").font(.title2.bold())
@@ -143,7 +143,7 @@ struct DockerView: View {
                     Card(title: row["Type"] ?? "", icon: "cube.box.fill", color: .cyan) {
                         Text(row["Size"] ?? "").font(.title2.bold())
                         Text("\(row["Reclaimable"] ?? "") unused").foregroundStyle(.secondary)
-                        Text("\(row["TotalCount"] ?? "") total · \(row["Active"] ?? "") in use").font(.caption).foregroundStyle(.secondary)
+                        Text("\(row["TotalCount"] ?? "") total · \(row["Active"] ?? "") in use").font(.callout).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -236,7 +236,7 @@ struct DevCachesView: View {
                             Image(nsImage: NSWorkspace.shared.icon(forFile: c.fullPath)).resizable().frame(width: 30, height: 30)
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(c.name).font(.headline)
-                                Text(c.path).font(.caption).foregroundStyle(.secondary)
+                                Text(c.path).font(.callout).foregroundStyle(.secondary)
                                 GeometryReader { g in
                                     Capsule().fill(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
                                         .frame(width: max(4, g.size.width * (m.sizes[c.id] ?? 0) / biggest))
@@ -307,7 +307,7 @@ struct SnapshotsView: View {
                 if m.loading { Loading("Looking for snapshots…", colors) }
                 else {
                     Card(title: "Time Machine", icon: "clock.fill", color: .purple) {
-                        if tm.isEmpty { Text("No Time Machine snapshots on this Mac 🎉").foregroundStyle(.secondary) }
+                        if tm.isEmpty { Text("No Time Machine snapshots on this Mac.").foregroundStyle(.secondary) }
                         ForEach(tm, id: \.self) { s in
                             HStack {
                                 Text(SnapshotModel.date(s) ?? s).monospacedDigit()
@@ -319,7 +319,7 @@ struct SnapshotsView: View {
                     if !other.isEmpty {
                         Card(title: "macOS update snapshots", icon: "apple.logo", color: .gray) {
                             Text("Managed by macOS and removed after the update finishes. Leave these alone.").foregroundStyle(.secondary)
-                            ForEach(other, id: \.self) { s in Text(s).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle) }
+                            ForEach(other, id: \.self) { s in Text(s).font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle) }
                         }
                     }
                     if !m.message.isEmpty { Text(m.message).foregroundStyle(.yellow) }
@@ -471,7 +471,7 @@ struct HistoryView: View {
                     Picker("Warn me when free space drops below", selection: Binding(get: { disk.thresholdGB }, set: { disk.thresholdGB = $0 })) {
                         Text("Off").tag(0); Text("10 GB").tag(10); Text("20 GB").tag(20); Text("30 GB").tag(30); Text("50 GB").tag(50)
                     }
-                    Text("Checked every minute while Clutterfly runs. It also sits in your menu bar.").font(.caption).foregroundStyle(.secondary)
+                    Text("Checked every minute while Clutterfly runs. It also sits in your menu bar.").font(.callout).foregroundStyle(.secondary)
                 }
                 if !m.sessions.isEmpty {
                     Card(title: "Recent activity", icon: "list.bullet", color: .teal) {
@@ -560,19 +560,19 @@ struct ProtectView: View {
                         Runner.openInTerminal(name: "whitelist", script: "mo clean --whitelist")
                     }
                 }
-                if !m.custom { Text("Showing Mole's built-in defaults. Your first change saves them together with yours.").font(.caption).foregroundStyle(.secondary) }
+                if !m.custom { Text("Showing Mole's built-in defaults. Your first change saves them together with yours.").font(.callout).foregroundStyle(.secondary) }
                 Card(title: "\(m.patterns.count) protected", icon: "lock.fill", color: .yellow) {
                     ForEach(m.patterns, id: \.self) { p in
                         HStack {
                             Text(p == "FINDER_METADATA" ? "Finder metadata files (.DS_Store)" : (p as NSString).abbreviatingWithTildeInPath)
                                 .lineLimit(1).truncationMode(.middle)
                             Spacer()
-                            Button { m.remove(p) } label: { Image(systemName: "minus.circle.fill").foregroundStyle(.red) }.buttonStyle(.plain)
+                            Button { m.remove(p) } label: { Label("Remove", systemImage: "minus.circle.fill").labelStyle(.iconOnly).foregroundStyle(.red) }.buttonStyle(.plain)
                         }
                     }
                 }
                 Text("Mole always keeps its own safety protections (system files, keychains and so on), whatever is listed here.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.secondary)
             }
             .padding(28)
         }
@@ -629,7 +629,8 @@ struct DrivesView: View {
             VStack(alignment: .leading, spacing: 18) {
                 ScreenHeader(title: "External Drives", subtitle: "Explore USB and SSD drives, and clear the hidden Mac junk files on them.", icon: "externaldrive.fill", colors: colors)
                 if m.volumes.isEmpty {
-                    Text("No external drives connected. Plug one in and it shows up here.").foregroundStyle(.secondary).padding(.top, 30)
+                    ContentUnavailableView("No external drives", systemImage: "externaldrive.badge.questionmark",
+                                           description: Text("Plug one in and it shows up here.")).padding(.top, 30)
                 }
                 ForEach(m.volumes) { v in
                     Card(title: v.name, icon: "externaldrive.fill", color: .orange) {
@@ -638,7 +639,7 @@ struct DrivesView: View {
                                  label: v.total > 0 ? "\(Int(100 * (v.total - v.free) / v.total))%" : "–", size: 70)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("\(bytes(v.free)) free of \(bytes(v.total))").font(.headline)
-                                Text(v.url.path).font(.caption).foregroundStyle(.secondary)
+                                Text(v.url.path).font(.callout).foregroundStyle(.secondary)
                             }
                             Spacer()
                         }
@@ -696,7 +697,7 @@ struct TouchIDView: View {
                 }
             }
             Text("Changing this edits the macOS sudo settings, so Terminal asks for your password one last time.")
-                .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Spacer()
         }
         .padding(28)
@@ -731,7 +732,7 @@ struct UpdateView: View {
         ScrollView {
             VStack(spacing: 20) {
                 ScreenHeader(title: "Update Mole", subtitle: "Clutterfly uses whatever Mole version is installed.", icon: "arrow.triangle.2.circlepath", colors: colors)
-                Orb(colors: colors, busy: m.busy, icon: "arrow.down.circle.fill")
+                if m.busy { Orb(colors: colors, busy: true, icon: "arrow.down.circle.fill") }
                 Text(m.version).font(.title2.bold())
                 BigButton(title: m.busy ? "Updating…" : "Update Now", icon: "arrow.down.circle.fill", colors: colors) {
                     Task { await m.update() }

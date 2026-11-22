@@ -39,5 +39,5 @@ running=$(pgrep -x Clutterfly || true)
 [[ -n "$running" ]] && { pkill -x Clutterfly; while pgrep -x Clutterfly >/dev/null; do sleep 0.2; done; }
 rm -rf "/Applications/$APP" && ditto "$APP" "/Applications/$APP"
 echo "Installed /Applications/$APP"
-[[ -n "$running" ]] && open "/Applications/$APP"
+[[ -n "$running" ]] && { sleep 1; open "/Applications/$APP"; }
 true

@@ -156,6 +156,8 @@ func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
 
 func openSettings(_ url: String) { NSWorkspace.shared.open(URL(string: url)!) }
 
+func copy(_ s: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(s, forType: .string) }
+
 // MARK: - Running Apps
 
 @MainActor final class ProcessModel: ObservableObject {
@@ -253,7 +255,7 @@ struct ProcessesView: View {
             Image(nsImage: m.icon(p)).resizable().frame(width: 26, height: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(m.name(p)).font(.headline).lineLimit(1)
-                Text("PID \(p.pid) · \(p.user)").font(.caption).foregroundStyle(.secondary)
+                Text("PID \(p.pid) · \(p.user)").font(.callout).foregroundStyle(.secondary)
             }
             Spacer()
             Text(String(format: "%.1f%%", p.cpu)).monospacedDigit().frame(width: 60, alignment: .trailing)
@@ -261,10 +263,19 @@ struct ProcessesView: View {
             Text(bytes(p.memKB * 1024)).monospacedDigit().frame(width: 80, alignment: .trailing)
             if m.canStop(p) {
                 Button("Quit") { m.quit(p) }
-                Button { m.forceTarget = p; m.confirmForce = true } label: { Image(systemName: "xmark.octagon.fill").foregroundStyle(.red) }
+                Button { m.forceTarget = p; m.confirmForce = true } label: { Label("Force Quit", systemImage: "xmark.octagon.fill").labelStyle(.iconOnly).foregroundStyle(.red) }
                     .buttonStyle(.plain).help("Force Quit")
             } else {
                 pill("System", .gray).frame(width: 84)
+            }
+        }
+        .contextMenu {
+            if !p.path.isEmpty { Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: p.path)]) } }
+            Button("Copy Process ID") { copy("\(p.pid)") }
+            if m.canStop(p) {
+                Divider()
+                Button("Quit") { m.quit(p) }
+                Button("Force Quit…") { m.forceTarget = p; m.confirmForce = true }
             }
         }
     }
@@ -335,7 +346,7 @@ struct StartupView: View {
                 ScreenHeader(title: "Startup Items", subtitle: "Things that start on their own and keep running in the background.", icon: "power", colors: colors)
                 HStack {
                     Button("Open Login Items in Settings") { openSettings("x-apple.systempreferences:com.apple.LoginItems-Settings.extension") }
-                    Text("Apps that open at login are managed there.").font(.caption).foregroundStyle(.secondary)
+                    Text("Apps that open at login are managed there.").font(.callout).foregroundStyle(.secondary)
                     Spacer()
                     if !m.message.isEmpty { Text(m.message).foregroundStyle(.green) }
                 }
@@ -362,13 +373,18 @@ struct StartupView: View {
                     Text(i.label).font(.headline).lineLimit(1)
                     if i.running { pill("Running", .green) }
                 }
-                Text(i.program.isEmpty ? i.plist : i.program).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                Text(i.program.isEmpty ? i.plist : i.program).font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: i.plist)]) } label: { Image(systemName: "magnifyingglass") }
+            Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: i.plist)]) } label: { Label("Show in Finder", systemImage: "magnifyingglass").labelStyle(.iconOnly) }
                 .buttonStyle(.plain).help("Show in Finder")
-            Toggle("", isOn: Binding(get: { !i.disabled }, set: { on in Task { await m.set(i, on: on) } }))
+            Toggle(i.label, isOn: Binding(get: { !i.disabled }, set: { on in Task { await m.set(i, on: on) } }))
                 .toggleStyle(.switch).labelsHidden()
+        }
+        .contextMenu {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: i.plist)]) }
+            Button("Copy Path") { copy(i.plist) }
+            Button("Copy Label") { copy(i.label) }
         }
     }
 }
@@ -401,25 +417,25 @@ struct PortsView: View {
                 ScreenHeader(title: "Ports in Use", subtitle: "Which app is listening on which port. Handy when a dev server says \"address in use\".", icon: "point.3.connected.trianglepath.dotted", colors: colors)
                 if !m.message.isEmpty { Text(m.message).foregroundStyle(.green) }
                 if m.loading { Loading("Checking ports…", colors) }
-                else if m.listeners.isEmpty { Text("Nothing of yours is listening on a port.").foregroundStyle(.secondary) }
+                else if m.listeners.isEmpty { ContentUnavailableView("No ports in use", systemImage: "point.3.connected.trianglepath.dotted", description: Text("Nothing of yours is listening on a port right now.")) }
                 ForEach(m.listeners) { l in
                     row {
                         Text(":\(l.port)").font(.system(size: 22, weight: .bold, design: .rounded)).monospacedDigit().frame(width: 90, alignment: .leading)
                         Image(nsImage: appIcon(pid: l.pid, path: "")).resizable().frame(width: 24, height: 24)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(NSRunningApplication(processIdentifier: l.pid)?.localizedName ?? l.command).font(.headline)
-                            Text("PID \(l.pid)").font(.caption).foregroundStyle(.secondary)
+                            Text("PID \(l.pid)").font(.callout).foregroundStyle(.secondary)
                         }
                         Spacer()
                         pill(["127.0.0.1", "[::1]", "localhost"].contains(l.address) ? "This Mac only" : "Open to network",
                              ["127.0.0.1", "[::1]", "localhost"].contains(l.address) ? .green : .yellow)
                         Button("Open") { NSWorkspace.shared.open(URL(string: "http://localhost:\(l.port)")!) }
                         Button("Stop") { m.stop(l, force: false) }
-                        Button { m.stop(l, force: true) } label: { Image(systemName: "xmark.octagon.fill").foregroundStyle(.red) }
+                        Button { m.stop(l, force: true) } label: { Label("Force Stop", systemImage: "xmark.octagon.fill").labelStyle(.iconOnly).foregroundStyle(.red) }
                             .buttonStyle(.plain).help("Force stop")
                     }
                 }
-                Text("Only your own apps are listed. System services need admin access to see.").font(.caption).foregroundStyle(.secondary)
+                Text("Only your own apps are listed. System services need admin access to see.").font(.callout).foregroundStyle(.secondary)
             }
             .padding(28)
         }
@@ -432,7 +448,10 @@ struct PortsView: View {
 struct BigFile: Identifiable { var id: String { path }; let path: String, size: Double, modified: Date? }
 
 @MainActor final class LargeFilesModel: ObservableObject {
-    @Published var mode = 0            // 0 large files, 1 old downloads
+    @Published var mode: Int = {       // 0 large files, 1 old downloads
+        defer { Runner.shared.largeFilesMode = 0 }
+        return Runner.shared.largeFilesMode
+    }()
     @Published var minMB = 500
     @Published var files: [BigFile] = []
     @Published var loading = false
@@ -524,15 +543,22 @@ struct LargeFilesView: View {
                     if let note = rule.note { pill(note, note == "App data" ? .gray : .cyan) }
                 }
                 Text(((f.path as NSString).deletingLastPathComponent as NSString).abbreviatingWithTildeInPath)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    .font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             Spacer()
-            if let d = f.modified { Text(d, style: .date).font(.caption).foregroundStyle(.secondary) }
+            if let d = f.modified { Text(d, style: .date).font(.callout).foregroundStyle(.secondary) }
             Text(bytes(f.size)).monospacedDigit().frame(width: 80, alignment: .trailing)
-            Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f.path)]) } label: { Image(systemName: "magnifyingglass") }
+            Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f.path)]) } label: { Label("Show in Finder", systemImage: "magnifyingglass").labelStyle(.iconOnly) }
                 .buttonStyle(.plain).help("Show in Finder")
-            Button { m.target = f; m.confirm = true } label: { Image(systemName: "trash").foregroundStyle(rule.canTrash ? .red : .gray) }
+            Button { m.target = f; m.confirm = true } label: { Label("Move to Trash", systemImage: "trash").labelStyle(.iconOnly).foregroundStyle(rule.canTrash ? .red : .gray) }
                 .buttonStyle(.plain).disabled(!rule.canTrash).help(rule.canTrash ? "Move to Trash" : "Remove it from inside the app that made it")
+        }
+        .contextMenu {
+            Button("Open") { NSWorkspace.shared.open(URL(fileURLWithPath: f.path)) }
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: f.path)]) }
+            Button("Copy Path") { copy(f.path) }
+            Divider()
+            Button("Move to Trash…") { m.target = f; m.confirm = true }.disabled(!rule.canTrash)
         }
     }
 }
@@ -564,7 +590,7 @@ struct SpeedTestView: View {
         ScrollView {
             VStack(spacing: 22) {
                 ScreenHeader(title: "Speed Test", subtitle: "Apple's built-in test (networkQuality), against Apple's servers.", icon: "speedometer", colors: colors)
-                Orb(colors: colors, busy: m.running, icon: "wifi")
+                if m.running { Orb(colors: colors, busy: true, icon: "wifi") }
                 if m.running { Text("Testing download, then upload… about 30 seconds.").foregroundStyle(.secondary) }
                 if let r = m.result {
                     HStack(spacing: 28) {
@@ -574,11 +600,11 @@ struct SpeedTestView: View {
                     HStack(spacing: 14) {
                         Card(title: "Latency", icon: "timer", color: .orange) {
                             Text("\(Int(r.base_rtt ?? 0)) ms").font(.title.bold())
-                            Text("Time for a round trip when the line is idle.").font(.caption).foregroundStyle(.secondary)
+                            Text("Time for a round trip when the line is idle.").font(.callout).foregroundStyle(.secondary)
                         }
                         Card(title: "Responsiveness", icon: "bolt.horizontal.fill", color: .purple) {
                             Text("\(Int(r.rpm)) RPM · \(r.rpm >= 1000 ? "High" : r.rpm >= 200 ? "Medium" : "Low")").font(.title.bold())
-                            Text("How snappy things feel while the connection is busy.").font(.caption).foregroundStyle(.secondary)
+                            Text("How snappy things feel while the connection is busy.").font(.callout).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -594,7 +620,7 @@ struct SpeedTestView: View {
 
     func gauge(_ title: String, _ mbps: Double, _ icon: String, _ c: [Color]) -> some View {
         VStack(spacing: 8) {
-            Ring(value: min(mbps / 500, 1), colors: c, label: String(format: "%.0f", mbps), size: 150)
+            Ring(value: min(mbps / 500, 1), colors: c, label: String(format: "%.0f", mbps), size: 150, name: "\(title) megabits per second")
             Label("\(title) · Mbps", systemImage: icon).foregroundStyle(.secondary)
         }
     }
@@ -633,7 +659,7 @@ struct NetInfoView: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     ScreenHeader(title: "Network", subtitle: "Your connection, and which apps are talking to the internet.", icon: "network", colors: colors)
-                    Button { Task { await m.load() } } label: { Image(systemName: "arrow.clockwise") }
+                    Button { Task { await m.load() } } label: { Label("Refresh", systemImage: "arrow.clockwise").labelStyle(.iconOnly) }.keyboardShortcut("r")
                 }
                 if m.loading { Loading("Reading network…", colors) }
                 else {
@@ -644,7 +670,7 @@ struct NetInfoView: View {
                                 Text(r.1).textSelection(.enabled)
                             }
                         }
-                        Text("macOS hides the Wi-Fi name from apps without Location access, so it isn't shown.").font(.caption).foregroundStyle(.secondary)
+                        Text("macOS hides the Wi-Fi name from apps without Location access, so it isn't shown.").font(.callout).foregroundStyle(.secondary)
                     }
                     Card(title: "Apps using the network now", icon: "app.connected.to.app.below.fill", color: .teal) {
                         if m.apps.isEmpty { Text("None of your apps have open connections.").foregroundStyle(.secondary) }
@@ -652,7 +678,7 @@ struct NetInfoView: View {
                             HStack(spacing: 10) {
                                 Image(nsImage: appIcon(pid: a.pid, path: "")).resizable().frame(width: 22, height: 22)
                                 Text(NSRunningApplication(processIdentifier: a.pid)?.localizedName ?? a.command).frame(width: 180, alignment: .leading).lineLimit(1)
-                                Text(a.remotes.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                Text(a.remotes.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                                 Spacer()
                                 Text("\(a.connections) connection\(a.connections == 1 ? "" : "s")").monospacedDigit()
                             }
@@ -713,8 +739,8 @@ struct BatteryView: View {
             Text(charging ? "Charging ⚡️" : plugged ? "Plugged in, not charging" : "On battery" + (m.timeLeft.isEmpty ? "" : " · \(m.timeLeft) left"))
                 .font(.title2.bold())
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
-                Card(title: "Cycles", icon: "arrow.triangle.2.circlepath", color: .green) { Text("\(Int(m.num("CycleCount")))").font(.title.bold()); Text("Apple rates these for 1000").font(.caption).foregroundStyle(.secondary) }
-                Card(title: "Capacity", icon: "battery.75percent", color: .mint) { Text("\(Int(m.num("AppleRawMaxCapacity"))) mAh").font(.title.bold()); Text("of \(Int(m.num("DesignCapacity"))) mAh when new").font(.caption).foregroundStyle(.secondary) }
+                Card(title: "Cycles", icon: "arrow.triangle.2.circlepath", color: .green) { Text("\(Int(m.num("CycleCount")))").font(.title.bold()); Text("Apple rates these for 1000").font(.callout).foregroundStyle(.secondary) }
+                Card(title: "Capacity", icon: "battery.75percent", color: .mint) { Text("\(Int(m.num("AppleRawMaxCapacity"))) mAh").font(.title.bold()); Text("of \(Int(m.num("DesignCapacity"))) mAh when new").font(.callout).foregroundStyle(.secondary) }
                 Card(title: "Temperature", icon: "thermometer.medium", color: .orange) { Text(String(format: "%.1f °C", m.num("Temperature") / 100)).font(.title.bold()) }
                 Card(title: "Charger", icon: "powerplug.fill", color: .yellow) { Text(plugged ? (m.watts.map { "\($0) W" } ?? "Connected") : "Not connected").font(.title.bold()) }
                 Card(title: "Low Power Mode", icon: "leaf.fill", color: .green) {
@@ -768,7 +794,7 @@ struct SleepView: View {
                             Image(nsImage: appIcon(pid: b.pid, path: "")).resizable().frame(width: 24, height: 24)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(NSRunningApplication(processIdentifier: b.pid)?.localizedName ?? b.process).font(.headline)
-                                Text(b.reason).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                Text(b.reason).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer()
                             pill(SleepModel.friendly[b.type] ?? b.type, .yellow)
@@ -844,7 +870,7 @@ struct SecurityView: View {
                                 .font(.title).foregroundStyle(c.ok ? .green : .orange)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(c.title).font(.headline)
-                                Text(c.why).font(.caption).foregroundStyle(.secondary)
+                                Text(c.why).font(.callout).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Text(c.ok ? "On" : "Off").bold().foregroundStyle(c.ok ? .green : .orange)
@@ -888,7 +914,7 @@ struct FirstAidView: View {
         ScrollView {
             VStack(spacing: 18) {
                 ScreenHeader(title: "Disk First Aid", subtitle: "Check your startup disk for errors, like Disk Utility does.", icon: "stethoscope", colors: colors)
-                Orb(colors: colors, busy: m.running, icon: "internaldrive.fill")
+                if m.running { Orb(colors: colors, busy: true, icon: "internaldrive.fill") }
                 Card(title: "Startup disk", icon: "internaldrive", color: .orange) {
                     ForEach(m.info, id: \.0) { r in
                         HStack { Text(r.0).foregroundStyle(.secondary).frame(width: 200, alignment: .leading); Text(r.1) }
@@ -998,7 +1024,7 @@ struct UpdatesView: View {
         HStack {
             Text(p.name).font(.headline)
             if cask { pill("App", .blue) }
-            Text("\(p.installed_versions.last ?? "") → \(p.current_version)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text("\(p.installed_versions.last ?? "") → \(p.current_version)").font(.callout).foregroundStyle(.secondary).lineLimit(1)
             Spacer()
             if m.busy == p.name || m.busy == "all" { ProgressView().controlSize(.small) }
             else { Button("Upgrade") { Task { await m.upgrade(p.name, cask: cask) } }.disabled(m.busy != nil) }
@@ -1135,7 +1161,7 @@ struct TweaksView: View {
                         Toggle(t.title, isOn: Binding(get: { m.on[t.id] ?? false }, set: { v in Task { await m.set(t, v) } }))
                             .toggleStyle(.switch)
                     }
-                    Text("Finder or the Dock restarts for a second after a change.").font(.caption).foregroundStyle(.secondary)
+                    Text("Finder or the Dock restarts for a second after a change.").font(.callout).foregroundStyle(.secondary)
                 }
                 Card(title: "Screenshots", icon: "camera.viewfinder", color: .indigo) {
                     HStack {
@@ -1209,7 +1235,7 @@ struct ShortcutsView: View {
                     }
                 }
             }
-            Text("Shortcuts that ask for input may stop with an error here. Run those from the Shortcuts app.").font(.caption).foregroundStyle(.secondary)
+            Text("Shortcuts that ask for input may stop with an error here. Run those from the Shortcuts app.").font(.callout).foregroundStyle(.secondary)
         }
         .padding(24)
         .task { await m.load() }

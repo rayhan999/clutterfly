@@ -23,6 +23,8 @@ struct Card<Content: View>: View {
 struct Ring: View {
     let value: Double, colors: [Color], label: String
     var size: CGFloat = 90
+    var name = ""       // what it measures, for VoiceOver ("CPU 12%")
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     var body: some View {
         ZStack {
             Circle().stroke(.white.opacity(0.1), lineWidth: size / 9)
@@ -30,15 +32,17 @@ struct Ring: View {
                 .stroke(AngularGradient(colors: colors + [colors[0]], center: .center),
                         style: StrokeStyle(lineWidth: size / 9, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.6), value: value)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: value)
             Text(label).font(.system(size: size * 0.22, weight: .bold, design: .rounded))
         }
         .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(name.isEmpty ? label : "\(name) \(label)")
     }
 }
 
 func pill(_ s: String, _ c: Color) -> some View {
-    Text(s).font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2)
+    Text(s).font(.caption.bold()).padding(.horizontal, 6).padding(.vertical, 2)
         .background(c.opacity(0.2), in: Capsule()).foregroundStyle(c)
 }
 
@@ -80,8 +84,8 @@ struct StatusView: View {
     var body: some View {
         ScrollView {
             if let s = m.snap { content(s) }
-            else if m.failed { Text("Couldn't read status from mo.").padding(.top, 80) }
-            else { Loading("Checking your Mac…", [.green, .mint]) }
+            else if m.failed { ContentUnavailableView("Couldn't read your Mac's status", systemImage: "exclamationmark.triangle", description: Text("Mole didn't answer. It keeps trying every 2 seconds.")).padding(.top, 60) }
+            else { Loading("Checking your Mac…", palette["Explore"]!) }
         }
         .task { await m.poll() }   // stops automatically when you leave this screen
     }
@@ -91,9 +95,9 @@ struct StatusView: View {
     func content(_ s: Snapshot) -> some View {
         VStack(spacing: 18) {
             HStack(spacing: 24) {
-                Ring(value: s.health_score / 100, colors: healthColors(s.health_score), label: "\(Int(s.health_score))", size: 130)
+                Ring(value: s.health_score / 100, colors: healthColors(s.health_score), label: "\(Int(s.health_score))", size: 130, name: "Health score")
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("HEALTH SCORE").font(.caption.bold()).foregroundStyle(.secondary)
+                    Text("HEALTH SCORE").font(.subheadline.bold()).foregroundStyle(.secondary)
                     Text(s.health_score_msg).font(.title2.bold())
                     Text("\(s.hardware.model) · \(s.hardware.cpu_model) · \(s.hardware.total_ram) RAM").foregroundStyle(.secondary)
                     Text("\(s.hardware.os_version) · up \(s.uptime)").foregroundStyle(.secondary)
@@ -103,7 +107,7 @@ struct StatusView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
                 Card(title: "CPU", icon: "cpu", color: .cyan) {
                     HStack(spacing: 18) {
-                        Ring(value: s.cpu.usage / 100, colors: [.cyan, .blue], label: "\(Int(s.cpu.usage))%")
+                        Ring(value: s.cpu.usage / 100, colors: [.cyan, .blue], label: "\(Int(s.cpu.usage))%", name: "CPU")
                         HStack(alignment: .bottom, spacing: 3) {
                             ForEach(Array(s.cpu.per_core.enumerated()), id: \.offset) { _, v in
                                 Capsule().fill(LinearGradient(colors: [.blue, .cyan], startPoint: .bottom, endPoint: .top))
@@ -115,7 +119,7 @@ struct StatusView: View {
                 }
                 Card(title: "Memory", icon: "memorychip", color: .purple) {
                     HStack(spacing: 18) {
-                        Ring(value: s.memory.used_percent / 100, colors: [.purple, .pink], label: "\(Int(s.memory.used_percent))%")
+                        Ring(value: s.memory.used_percent / 100, colors: [.purple, .pink], label: "\(Int(s.memory.used_percent))%", name: "Memory used")
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(bytes(s.memory.used)) of \(bytes(s.memory.total))")
                             Text("Swap \(bytes(s.memory.swap_used))").foregroundStyle(.secondary)
@@ -126,7 +130,7 @@ struct StatusView: View {
                 if let d = s.disks.first {
                     Card(title: "Disk", icon: "internaldrive", color: .orange) {
                         HStack(spacing: 18) {
-                            Ring(value: d.used / d.total, colors: [.orange, .pink], label: "\(Int(100 * d.used / d.total))%")
+                            Ring(value: d.used / d.total, colors: [.orange, .pink], label: "\(Int(100 * d.used / d.total))%", name: "Disk used")
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("\(bytes(d.total - d.used)) free").font(.title3.bold())
                                 Text("of \(bytes(d.total))").foregroundStyle(.secondary)
@@ -137,7 +141,7 @@ struct StatusView: View {
                 if let b = s.batteries?.first {
                     Card(title: "Battery", icon: "battery.75percent", color: .green) {
                         HStack(spacing: 18) {
-                            Ring(value: b.percent / 100, colors: [.green, .mint], label: "\(Int(b.percent))%")
+                            Ring(value: b.percent / 100, colors: [.green, .mint], label: "\(Int(b.percent))%", name: "Battery")
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(b.status.capitalized)
                                 Text("Health \(b.health) · \(b.cycle_count) cycles").foregroundStyle(.secondary)
@@ -229,7 +233,7 @@ struct ExplorerView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 if !m.stack.isEmpty {
-                    Button { m.back() } label: { Image(systemName: "chevron.left").font(.title2) }
+                    Button { m.back() } label: { Label("Back", systemImage: "chevron.left").labelStyle(.iconOnly).font(.title2) }
                         .buttonStyle(.plain).disabled(m.loading)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -242,7 +246,7 @@ struct ExplorerView: View {
                     Text(bytes(t)).font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundStyle(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
                 }
-                Button { Task { await m.load() } } label: { Image(systemName: "arrow.clockwise") }.disabled(m.loading)
+                Button { Task { await m.load() } } label: { Label("Refresh", systemImage: "arrow.clockwise").labelStyle(.iconOnly) }.keyboardShortcut("r").disabled(m.loading)
             }
             if m.loading { Loading("Measuring folders… big ones can take half a minute.", colors) }
             else if !m.error.isEmpty { Text(m.error).foregroundStyle(.red) }
@@ -286,7 +290,7 @@ struct ExplorerView: View {
                             if ExplorerModel.canTrash(e) {
                                 Button("Move to Trash…", role: .destructive) { m.trashTarget = e; m.confirmTrash = true }
                             }
-                        } label: { Image(systemName: "ellipsis.circle") }
+                        } label: { Label("More", systemImage: "ellipsis.circle").labelStyle(.iconOnly) }
                             .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28)
                         Image(systemName: "chevron.right").foregroundStyle(.secondary).opacity(e.is_dir == true ? 1 : 0)
                     }
@@ -352,7 +356,7 @@ struct UninstallView: View {
             VStack(spacing: 0) {
                 HStack {
                     TextField("Search apps", text: $m.search).textFieldStyle(.roundedBorder)
-                    Button { Task { await m.load() } } label: { Image(systemName: "arrow.clockwise") }.disabled(m.loading)
+                    Button { Task { await m.load() } } label: { Label("Refresh", systemImage: "arrow.clockwise").labelStyle(.iconOnly) }.keyboardShortcut("r").disabled(m.loading)
                 }
                 .padding(10)
                 if m.loading && m.apps.isEmpty { ProgressView().padding() }
@@ -361,7 +365,7 @@ struct UninstallView: View {
                         Image(nsImage: NSWorkspace.shared.icon(forFile: a.path)).resizable().frame(width: 26, height: 26)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(a.name).lineLimit(1)
-                            Text(a.size == "--" ? a.source : "\(a.size) · \(a.source)").font(.caption).foregroundStyle(.secondary)
+                            Text(a.size == "--" ? a.source : "\(a.size) · \(a.source)").font(.callout).foregroundStyle(.secondary)
                         }
                     }
                     .tag(a.path)
@@ -398,9 +402,9 @@ struct UninstallView: View {
                         BigButton(title: "Uninstall…", icon: "trash.fill", colors: [.red, .pink]) { m.uninstallInTerminal() }
                     }
                     Text("Preview shows what will be removed. Uninstall opens Terminal, where you press Enter to confirm; Mole insists on that for safety. Files go to the Trash.")
-                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 460)
+                        .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 460)
                     if !m.preview.isEmpty {
-                        Text(m.preview).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        Text(m.preview).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(12)
                             .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
                     }
@@ -408,10 +412,10 @@ struct UninstallView: View {
                 .padding(28)
             }
         } else {
-            VStack(spacing: 10) {
-                Orb(colors: [.red, .pink], busy: m.loading, icon: "trash.fill")
-                Text(m.loading ? "Finding your apps…" : "Pick an app on the left").font(.title2.bold())
-                Text("\(m.apps.count) apps installed").foregroundStyle(.secondary)
+            if m.loading { Loading("Finding your apps…", palette["Apps"]!) }
+            else {
+                ContentUnavailableView("Pick an app on the left", systemImage: "trash",
+                                       description: Text("\(m.apps.count) apps installed. You'll see what each one leaves behind before anything is removed."))
             }
         }
     }
@@ -456,16 +460,17 @@ struct CaffeinateView: View {
     let colors: [Color] = [.orange, .brown]
 
     var body: some View {
-        VStack(spacing: 20) {
-            Orb(colors: colors, busy: c.active, icon: "cup.and.saucer.fill")
-            Text(c.active ? "Staying awake ☕️" : "Caffeinate").font(.largeTitle.bold())
+        VStack(alignment: .leading, spacing: 20) {
+            ScreenHeader(title: "Caffeinate", subtitle: "Stop your Mac from falling asleep during downloads, builds or presentations.",
+                         icon: "cup.and.saucer.fill", colors: colors)
+            if c.active {
+                Orb(colors: colors, busy: true, icon: "cup.and.saucer.fill").frame(maxWidth: .infinity)
+                Text("Staying awake").font(.title.bold())
+            }
             if let end = c.endsAt {
                 (Text("Your Mac can sleep again in ") + Text(end, style: .timer)).font(.title3).monospacedDigit()
             } else if c.active {
                 Text("Until you stop it or quit Clutterfly.").foregroundStyle(.secondary)
-            } else {
-                Text("Stop your Mac from falling asleep during downloads, builds or presentations.")
-                    .foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             if c.active {
                 BigButton(title: "Let It Sleep", icon: "moon.zzz.fill", colors: [.indigo, .purple]) { c.stop() }
@@ -478,8 +483,178 @@ struct CaffeinateView: View {
                 Toggle("Keep the screen on too", isOn: $c.keepDisplayOn)
                 BigButton(title: "Keep Awake", icon: "bolt.fill", colors: colors) { c.start() }
             }
-            Text("Uses macOS's built-in caffeinate command.").font(.caption).foregroundStyle(.secondary)
+            Text("Uses macOS's built-in caffeinate command.").font(.callout).foregroundStyle(.secondary)
         }
-        .padding(32)
+        .padding(28)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+// MARK: - Home: what's using space and what to free first
+
+struct Suggestion: Identifiable {
+    let id: String, title: String, tool: String
+    var bytes: Double? = nil        // nil while still checking
+    var detail = "Checking…"
+}
+
+@MainActor final class HomeModel: ObservableObject {
+    static let shared = HomeModel()   // keeps results while you visit other screens
+    @Published var items: [Suggestion] = []
+    @Published var checkedAt: Date?
+
+    var checking: Bool { items.contains { $0.bytes == nil } }
+    var total: Double { items.compactMap(\.bytes).filter { $0 > 0 }.reduce(0, +) }
+    var ranked: [Suggestion] {
+        items.filter { $0.bytes != 0 }.sorted { ($0.bytes ?? -1) > ($1.bytes ?? -1) }
+    }
+
+    /// Re-checks at most every 5 minutes unless forced: the Smart Clean preview takes a while.
+    func load(force: Bool = false) async {
+        if !force, let t = checkedAt, Date().timeIntervalSince(t) < 300 { return }
+        checkedAt = Date()
+        items = [Suggestion(id: "clean", title: "System junk", tool: "clean"),
+                 Suggestion(id: "devcaches", title: "Developer caches", tool: "devcaches"),
+                 Suggestion(id: "docker", title: "Docker leftovers", tool: "docker"),
+                 Suggestion(id: "bigfiles", title: "Files over 1 GB", tool: "largefiles"),
+                 Suggestion(id: "downloads", title: "Old downloads", tool: "largefiles"),
+                 Suggestion(id: "snapshots", title: "Time Machine snapshots", tool: "snapshots")]
+        await withTaskGroup(of: (String, Double, String).self) { group in
+            for s in items { let id = s.id; group.addTask { let (b, d) = await Self.check(id); return (id, b, d) } }
+            for await (id, b, d) in group {
+                if let i = items.firstIndex(where: { $0.id == id }) { items[i].bytes = b; items[i].detail = d }
+            }
+        }
+    }
+
+    /// Size in bytes plus a one-line explanation. 0 hides the row.
+    nonisolated static func check(_ id: String) async -> (Double, String) {
+        switch id {
+        case "clean":
+            var rep = Report()
+            Runner.strip(String(decoding: await Runner.capture(["clean", "--dry-run"]), as: UTF8.self))
+                .components(separatedBy: "\n").forEach { rep.feed($0) }
+            return (parseSize(rep.headline), "Caches, logs and leftovers from deleted apps" + (rep.subline.isEmpty ? "" : " · \(rep.subline)"))
+        case "devcaches":
+            let present = devCaches.filter { FileManager.default.fileExists(atPath: $0.fullPath) }
+            var sum = 0.0
+            for c in present { sum += await DevCacheModel.size(c.fullPath) }
+            return (sum, "npm, Homebrew, Xcode and other tools re-download what they need")
+        case "docker":
+            let r = await sh("command -v docker >/dev/null || exit 127; docker system df --format '{{json .}}'")
+            let rows = r.out.split(separator: "\n").compactMap { try? JSONDecoder().decode([String: String].self, from: Data($0.utf8)) }
+            return (rows.map { parseSize($0["Reclaimable"] ?? "") }.reduce(0, +), "Unused images, containers and build cache")
+        case "bigfiles":
+            let lib = NSHomeDirectory() + "/Library/"
+            let paths = await sh("mdfind -onlyin \(q(NSHomeDirectory())) 'kMDItemFSSize > 1000000000'").out
+                .split(separator: "\n").map(String.init).filter { $0.hasPrefix("/") && !$0.hasPrefix(lib) }
+            let sum = paths.map { ((try? FileManager.default.attributesOfItem(atPath: $0))?[.size] as? NSNumber)?.doubleValue ?? 0 }.reduce(0, +)
+            return (sum, "\(paths.count) big file\(paths.count == 1 ? "" : "s") worth a look")
+        case "downloads":
+            let dl = NSHomeDirectory() + "/Downloads", cutoff = Date().addingTimeInterval(-90 * 86_400)
+            var sum = 0.0, n = 0
+            for name in (try? FileManager.default.contentsOfDirectory(atPath: dl)) ?? [] where !name.hasPrefix(".") {
+                let p = dl + "/" + name
+                guard let a = try? FileManager.default.attributesOfItem(atPath: p),
+                      let d = a[.modificationDate] as? Date, d < cutoff else { continue }
+                n += 1
+                sum += a[.type] as? FileAttributeType == .typeDirectory ? await DevCacheModel.size(p) : ((a[.size] as? NSNumber)?.doubleValue ?? 0)
+            }
+            return (sum, "\(n) item\(n == 1 ? "" : "s") in Downloads untouched for 90+ days")
+        case "snapshots":
+            let n = await sh("tmutil listlocalsnapshots /").out.components(separatedBy: "TimeMachine").count - 1
+            // macOS doesn't report snapshot sizes; -1 keeps the row visible without adding to the total.
+            return n > 0 ? (-1, "\(n) local snapshot\(n == 1 ? "" : "s"). macOS doesn't say how big") : (0, "")
+        default: return (0, "")
+        }
+    }
+}
+
+struct HomeView: View {
+    @ObservedObject var m = HomeModel.shared
+    @ObservedObject var disk = DiskWatcher.shared
+    @Environment(\.accent) var colors
+    let quick = ["status", "processes", "speed", "battery", "security", "startup"]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                ScreenHeader(title: "Home", subtitle: "What's filling your Mac, and what you can safely free first.", icon: "house.fill", colors: colors)
+                diskCard
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("You can free about").font(.title2.bold())
+                    Text(bytes(m.total)).font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing))
+                    if m.checking { ProgressView().controlSize(.small); Text("still checking…").foregroundStyle(.secondary) }
+                    Spacer()
+                    Button { Task { await m.load(force: true) } } label: { Label("Check Again", systemImage: "arrow.clockwise") }
+                        .keyboardShortcut("r").disabled(m.checking)
+                }
+                VStack(spacing: 8) { ForEach(m.ranked) { suggestionRow($0) } }
+                Text("Quick tools").font(.title3.bold()).padding(.top, 6)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                    ForEach(quick, id: \.self) { id in
+                        if let t = tools.first(where: { $0.id == id }) {
+                            Button { Runner.shared.selection = id } label: {
+                                VStack(spacing: 10) {
+                                    IconTile(icon: t.icon, colors: t.colors, size: 44)
+                                    Text(t.title).font(.headline)
+                                }
+                                .frame(maxWidth: .infinity).padding(.vertical, 16)
+                                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
+                                .contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(28)
+            .frame(maxWidth: 980)
+            .frame(maxWidth: .infinity)
+        }
+        .task { await m.load() }
+    }
+
+    var diskCard: some View {
+        let used = max(disk.total - disk.free, 0), frac = disk.total > 0 ? used / disk.total : 0
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(bytes(disk.free)).font(.system(size: 30, weight: .bold, design: .rounded))
+                Text("free of \(bytes(disk.total))").foregroundStyle(.secondary)
+                Spacer()
+                Text("\(Int(frac * 100))% used").font(.headline).foregroundStyle(frac > 0.9 ? .orange : .secondary)
+            }
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.white.opacity(0.1))
+                    Capsule().fill(LinearGradient(colors: frac > 0.9 ? [.orange, .red] : colors, startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(8, g.size.width * frac))
+                }
+            }
+            .frame(height: 14)
+        }
+        .padding(18)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+    }
+
+    func suggestionRow(_ s: Suggestion) -> some View {
+        let t = tools.first { $0.id == s.tool }!
+        return row {
+            IconTile(icon: t.icon, colors: t.colors, size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(s.title).font(.headline)
+                Text(s.detail).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            if let b = s.bytes {
+                if b > 0 { Text(bytes(b)).font(.title3.bold()).monospacedDigit() }
+            } else { ProgressView().controlSize(.small) }
+            Button("Review") {
+                if s.id == "downloads" { Runner.shared.largeFilesMode = 1 }
+                Runner.shared.selection = s.tool
+            }
+            .disabled(s.bytes == nil)
+        }
     }
 }
